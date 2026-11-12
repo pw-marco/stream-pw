@@ -1,6 +1,6 @@
 const express = require('express');
 const app = express();
-const TARGET_URL = 'https://cdn.physicswallah.xyz';
+const TARGET_URL = 'https://pw.studypika.eu.cc';
 
 // Locked HTML Response
 const lockedHtml = `
@@ -38,13 +38,7 @@ app.all(['/api/video', '/api/pw/api/video'], async (req, res) => {
     }
 
     try {
-        // Agar request /api/pw/api/video se aayi hai toh target ke liye /api/video bana do
-        let targetPath = req.url;
-        if (targetPath.startsWith('/api/pw')) {
-            targetPath = targetPath.replace('/api/pw', '');
-        }
-
-        const targetUrl = `${TARGET_URL}${targetPath}`;
+        const targetUrl = `${TARGET_URL}${req.url}`;
         
         // Forward request to actual target server
         const response = await fetch(targetUrl, {
@@ -56,17 +50,30 @@ app.all(['/api/video', '/api/pw/api/video'], async (req, res) => {
             body: ['GET', 'HEAD'].includes(req.method) ? undefined : req
         });
 
-        // Copy response headers
+        // Copy response headers (except content-length since we will modify body)
         response.headers.forEach((val, key) => {
-            res.setHeader(key, val);
+            if (key.toLowerCase() !== 'content-length') {
+                res.setHeader(key, val);
+            }
         });
 
         res.status(response.status);
         const buffer = await response.arrayBuffer();
         let bodyString = Buffer.from(buffer).toString('utf8');
 
-        // Response text me cdn.studypika.eu.cc ko cdn.physicswallah.xyz se replace karna
+        // 1. Replace domain cdn.studypika.eu.cc with cdn.physicswallah.xyz
         bodyString = bodyString.replaceAll('cdn.studypika.eu.cc', 'cdn.physicswallah.xyz');
+
+        // 2. Try to parse JSON and append "Powered By Marco" signature safely
+        try {
+            let json = JSON.parse(bodyString);
+            if (typeof json === 'object' && json !== null) {
+                json.powered_by = "Powered By Marco";
+                bodyString = JSON.stringify(json);
+            }
+        } catch (e) {
+            // Agar response JSON nahi hai toh as it is bhej do
+        }
 
         res.send(bodyString);
     } catch (err) {
