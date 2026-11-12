@@ -28,8 +28,8 @@ const lockedHtml = `
 </html>
 `;
 
-// Proxy handler specifically for /api/video with batchId check
-app.all('/api/video', async (req, res) => {
+// Proxy handler for both /api/video and /api/pw/api/video with batchId check
+app.all(['/api/video', '/api/pw/api/video'], async (req, res) => {
     const batchId = req.query.batchId;
 
     // Agar batchId query parameter nahi hai, toh lock screen dikhao
@@ -38,7 +38,13 @@ app.all('/api/video', async (req, res) => {
     }
 
     try {
-        const targetUrl = `${TARGET_URL}${req.url}`;
+        // Agar request /api/pw/api/video se aayi hai toh target ke liye /api/video bana do
+        let targetPath = req.url;
+        if (targetPath.startsWith('/api/pw')) {
+            targetPath = targetPath.replace('/api/pw', '');
+        }
+
+        const targetUrl = `${TARGET_URL}${targetPath}`;
         
         // Forward request to actual target server
         const response = await fetch(targetUrl, {
@@ -57,7 +63,12 @@ app.all('/api/video', async (req, res) => {
 
         res.status(response.status);
         const buffer = await response.arrayBuffer();
-        res.send(Buffer.from(buffer));
+        let bodyString = Buffer.from(buffer).toString('utf8');
+
+        // Response text me cdn.studypika.eu.cc ko cdn.physicswallah.xyz se replace karna
+        bodyString = bodyString.replaceAll('cdn.studypika.eu.cc', 'cdn.physicswallah.xyz');
+
+        res.send(bodyString);
     } catch (err) {
         console.error('Proxy error:', err);
         res.status(500).send({ error: 'Proxy Gateway Error' });
@@ -66,7 +77,7 @@ app.all('/api/video', async (req, res) => {
 
 // Home page aur baaki saare routes ke liye locked message
 app.use((req, res) => {
-    res.status(403).send(lockedLogs = lockedHtml);
+    res.status(403).send(lockedHtml);
 });
 
 const PORT = process.env.PORT || 3000;
