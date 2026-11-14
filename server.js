@@ -2,6 +2,9 @@ const express = require('express');
 const app = express();
 const TARGET_URL = 'https://pw.studypika.eu.cc';
 
+// Jo token aapne diya hai wahi hardcode kar diya gaya hai
+const AUTH_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjp7Il9pZCI6IjZhOTBmNTdlNDU3NzJiY2YzNWE0NmY3MyIsImNvdW50cnlHcm91cCI6IklOIiwib3JnYW5pemF0aW9uIjp7Il9pZCI6IjVlYjM5M2VlOTVmYWI3NDY4YTc5ZDE4OSJ9LCJyb2xlcyI6WyI1YjI3YmQ5NjU4NDJmOTUwYTc3OGM2ZWYiXSwidHlwZSI6IlVTRVIiLCJ1c2VybmFtZSI6IjczMDc3MDA1MzkifSwiZXhwIjoxNzk1MjcwMjQ4LjE2MiwiaWF0IjoxNzk0NjY1NDQ4LCJqdGkiOiJ1c25EN3RVQlR4dVNycTZoQUpjb2hRXzZhOTBmNTdlNDU3NzJiY2YzNWE0NmY3MyJ9.Qy4BWu4MK8Oc8FIU-_6ryvNwuaqjiB7GduCnM-wFbQI';
+
 // Locked HTML Response
 const lockedHtml = `
 <!DOCTYPE html>
@@ -40,17 +43,21 @@ app.all(['/api/video', '/api/pw/api/video'], async (req, res) => {
     try {
         const targetUrl = `${TARGET_URL}${req.url}`;
         
-        // Forward request to actual target server
+        // Request headers mein Authorization token inject karna
+        const customHeaders = {
+            ...req.headers,
+            host: new URL(TARGET_URL).host,
+            authorization: `Bearer ${AUTH_TOKEN}`
+        };
+
+        // Forward request to actual target server with token
         const response = await fetch(targetUrl, {
             method: req.method,
-            headers: {
-                ...req.headers,
-                host: new URL(TARGET_URL).host
-            },
+            headers: customHeaders,
             body: ['GET', 'HEAD'].includes(req.method) ? undefined : req
         });
 
-        // Copy response headers (except content-length since we will modify body)
+        // Copy response headers (except content-length)
         response.headers.forEach((val, key) => {
             if (key.toLowerCase() !== 'content-length') {
                 res.setHeader(key, val);
